@@ -57,7 +57,7 @@ Standard messaging platforms do not prevent print shop operators from downloadin
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com
+   git clone https://github.com/ShazithaSherif/SafePrints
    cd SafePrints
    ```
 
