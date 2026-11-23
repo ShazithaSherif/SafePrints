@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SafePrints — Command & Telemetry</title>
+  <style>
+    * { box-sizing: border-box; font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; }
+    body {
+      margin: 0; min-height: 100vh; color: #f8fafc;
+      background-color: #030712;
+      background-image:
+        radial-gradient(circle at 50% 0%, rgba(14, 165, 233, 0.16), transparent 50%),
+        radial-gradient(circle at 85% 90%, rgba(99, 102, 241, 0.14), transparent 45%),
+        linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+      background-size: 100% 100%, 100% 100%, 40px 40px, 40px 40px;
+      display: flex; flex-direction: column;
+    }
+
+    /* Enterprise Top Bar */
+    .navbar {
+      display: flex; justify-content: space-between; align-items: center; gap: 12px;
+      padding: 16px clamp(16px, 4vw, 40px);
+      border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+      background: rgba(3, 7, 18, 0.88); backdrop-filter: blur(14px);
+      position: sticky; top: 0; z-index: 50;
+    }
+    .logo-wrap { display: flex; align-items: center; gap: 10px; }
+    .logo-icon {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: linear-gradient(135deg, #0ea5e9, #6366f1);
+      display: flex; align-items: center; justify-content: center; font-size: 18px;
+      box-shadow: 0 0 20px rgba(14, 165, 233, 0.45);
+    }
+    .logo-text { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; }
+    .live-pill {
+      display: inline-flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 700;
+      color: #4ade80; background: rgba(74, 222, 128, 0.12); padding: 6px 14px;
+      border-radius: 999px; border: 1px solid rgba(74, 222, 128, 0.3);
+    }
+    .pulse-dot {
+      width: 8px; height: 8px; border-radius: 50%; background: #4ade80;
+      box-shadow: 0 0 10px #4ade80; animation: blink 1.5s infinite;
+    }
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+    /* Main Container */
+    .container {
+      flex: 1; max-width: 1120px; width: 100%; margin: 0 auto;
+      padding: clamp(24px, 4vw, 40px) clamp(16px, 3vw, 24px);
+    }
+    .header-row {
+      display: flex; justify-content: space-between; align-items: flex-end;
+      flex-wrap: wrap; gap: 16px; margin-bottom: 28px;
+    }
+    .header-row h1 { font-size: clamp(24px, 4vw, 32px); margin: 0 0 6px; font-weight: 800; }
+    .header-row p { color: #94a3b8; margin: 0; font-size: 14px; }
+
+    /* 4 Symmetrical KPI Cards */
+    .kpi-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px;
+    }
+    @media (max-width: 900px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 500px) { .kpi-grid { grid-template-columns: 1fr; } }
+
+    .kpi-card {
+      background: rgba(15, 23, 42, 0.88); backdrop-filter: blur(18px);
+      border: 1px solid rgba(148, 163, 184, 0.16); border-radius: 20px;
+      padding: 22px; position: relative; overflow: hidden;
+      box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.65);
+      transition: transform 0.25s ease, border-color 0.25s ease;
+    }
+    .kpi-card:hover { transform: translateY(-3px); border-color: rgba(56, 189, 248, 0.4); }
+    .kpi-card::before {
+      content: ""; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, #38bdf8, #818cf8);
+    }
+    .kpi-card.green::before { background: linear-gradient(90deg, #22c55e, #4ade80); }
+    .kpi-card.amber::before { background: linear-gradient(90deg, #f59e0b, #facc15); }
+
+    .kpi-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+    .kpi-label { font-size: 11px; color: #94a3b8; font-weight: 700; text-transform: uppercase; letter-spacing: 0.9px; }
+    .kpi-icon {
+      width: 36px; height: 36px; border-radius: 10px; background: rgba(56, 189, 248, 0.12);
+      display: flex; align-items: center; justify-content: center; font-size: 18px;
+    }
+    .kpi-num { font-size: 42px; font-weight: 800; color: #f8fafc; line-height: 1.1; margin-bottom: 8px; }
+    .kpi-sub { font-size: 12px; color: #64748b; font-weight: 600; }
+
+    /* Bottom Two-Column Telemetry Panels */
+    .panels-grid {
+      display: grid; grid-template-columns: 1.2fr 1fr; gap: 20px; margin-top: 24px;
+    }
+    @media (max-width: 860px) { .panels-grid { grid-template-columns: 1fr; } }
+
+    .panel {
+      background: rgba(15, 23, 42, 0.88); backdrop-filter: blur(18px);
+      border: 1px solid rgba(148, 163, 184, 0.16); border-radius: 20px;
+      padding: 24px; box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.65);
+    }
+    .panel h3 { margin: 0 0 6px; font-size: 16px; font-weight: 700; color: #f8fafc; }
+    .panel p.desc { margin: 0 0 18px; font-size: 13px; color: #94a3b8; }
+
+    .metric-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 12px 14px; background: #020617; border-radius: 12px;
+      border: 1px solid rgba(148, 163, 184, 0.12); margin-bottom: 10px; font-size: 13px;
+    }
+    .tag-ok { color: #4ade80; font-weight: 700; background: rgba(74, 222, 128, 0.12); padding: 4px 10px; border-radius: 6px; font-size: 11px; }
+
+    .log-feed {
+      background: #020617; border-radius: 14px; padding: 14px;
+      border: 1px solid rgba(148, 163, 184, 0.12); height: 175px; overflow-y: auto;
+      font-family: 'Consolas', monospace; font-size: 12px; color: #94a3b8;
+    }
+    .log-item { padding: 6px 0; border-bottom: 1px solid rgba(30, 41, 59, 0.7); }
+    .log-item:last-child { border-bottom: none; }
+
+    /* Full-Width Pinned Footer */
+    footer {
+      text-align: center; padding: 18px 16px; font-size: 13px; color: #64748b;
+      border-top: 1px solid rgba(148, 163, 184, 0.12);
+      background: rgba(3, 7, 18, 0.85); backdrop-filter: blur(10px);
+      margin-top: auto; letter-spacing: 0.3px;
+    }
+    footer strong {
+      background: linear-gradient(90deg, #38bdf8, #818cf8);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="logo-wrap">
+      <div class="logo-icon">🛡️</div>
+      <span class="logo-text">SafePrints</span>
+    </div>
+    <div class="live-pill">
+      <span class="pulse-dot"></span>
+      <span>LIVE TELEMETRY</span>
+    </div>
+  </nav>
+
+  <main class="container">
+    <div class="header-row">
+      <div>
+        <h1>Platform Reach & Privacy Command</h1>
+        <p>Real-time socket adoption and zero-knowledge print completions (zero user files ever logged).</p>
+      </div>
+      <div style="font-size: 12px; color: #38bdf8; background: rgba(56,189,248,0.1); padding: 8px 14px; border-radius: 10px; border: 1px solid rgba(56,189,248,0.25); font-weight: 600;">
+        🔐 Encryption: AES-256-GCM
+      </div>
+    </div>
+
+    <!-- 4 SYMMETRICAL KPI CARDS -->
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-top">
+          <span class="kpi-label">Total Portal Visits</span>
+          <div class="kpi-icon">🌐</div>
+        </div>
+        <div id="visits" class="kpi-num">0</div>
+        <div class="kpi-sub">Cumulative customer & shop hits</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-top">
+          <span class="kpi-label">Shops Online Now</span>
+          <div class="kpi-icon">🖨️</div>
+        </div>
+        <div id="shops" class="kpi-num" style="color: #38bdf8;">0</div>
+        <div class="kpi-sub">Active counter terminals connected</div>
+      </div>
+
+      <div class="kpi-card amber">
+        <div class="kpi-top">
+          <span class="kpi-label">Active Users Now</span>
+          <div class="kpi-icon">📱</div>
+        </div>
+        <div id="customers" class="kpi-num" style="color: #facc15;">0</div>
+        <div class="kpi-sub">Live paired encrypted tunnels</div>
+      </div>
+
+      <div class="kpi-card green">
+        <div class="kpi-top">
+          <span class="kpi-label">Docs Printed & Wiped</span>
+          <div class="kpi-icon">🔥</div>
+        </div>
+        <div id="prints" class="kpi-num" style="color: #4ade80;">0</div>
+        <div class="kpi-sub">Zero bytes retained on disk</div>
+      </div>
+    </div>
+
+    <!-- TELEMETRY & ZERO-KNOWLEDGE HEALTH PANELS -->
+    <div class="panels-grid">
+      <div class="panel">
+        <h3>Zero-Knowledge Security Posture</h3>
+        <p class="desc">Automated privacy safeguards active across the Node.js relay</p>
+
+        <div class="metric-row">
+          <span>Client-Side Browser Encryption</span>
+          <span class="tag-ok">AES-256 ENFORCED</span>
+        </div>
+        <div class="metric-row">
+          <span>Counter Screen Preview Masking</span>
+          <span class="tag-ok">PROTECTED SHIELD ON</span>
+        </div>
+        <div class="metric-row">
+          <span>Server Disk Storage Footprint</span>
+          <span class="tag-ok">0.00 MB (RAM ONLY)</span>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>Live Telemetry Stream</h3>
+        <p class="desc">Real-time anonymous socket events</p>
+        <div id="logFeed" class="log-feed">
+          <div class="log-item">[SYSTEM] Connected to SafePrints telemetry socket...</div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    Created by <strong>shazithasherif</strong>
+  </footer>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    const params = new URLSearchParams(window.location.search);
+    const logFeed = document.getElementById("logFeed");
+
+    let prevPrints = null;
+    let prevShops = null;
+
+    function addLog(text, color = "#94a3b8") {
+      const time = new Date().toLocaleTimeString();
+      const div = document.createElement("div");
+      div.className = "log-item";
+      div.style.color = color;
+      div.innerText = `[${time}] ${text}`;
+      logFeed.prepend(div);
+    }
+
+    socket.emit("join-admin", params.get("key"));
+
+    socket.on("stats-update", (data) => {
+      document.getElementById("visits").innerText = data.totalVisits;
+      document.getElementById("shops").innerText = data.activeShops;
+      document.getElementById("customers").innerText = data.activeCustomers;
+      document.getElementById("prints").innerText = data.totalPrintsCompleted;
+
+      if (prevPrints !== null && data.totalPrintsCompleted > prevPrints) {
+        addLog("Document printed in Protected Mode & RAM shredded.", "#4ade80");
+      }
+      if (prevShops !== null && data.activeShops !== prevShops) {
+        addLog(`Active counter terminals updated: ${data.activeShops} online.`, "#38bdf8");
+      }
+
+      prevPrints = data.totalPrintsCompleted;
+      prevShops = data.activeShops;
+    });
+  </script>
+</body>
+</html>

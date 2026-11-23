@@ -1,0 +1,25 @@
+{
+  "name": "safeprints",
+  "version": "1.0.0",
+  "description": "Zero-knowledge encrypted print relay with QR pairing and Protected Print Mode",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [
+    "nodejs",
+    "socketio",
+    "webcrypto",
+    "privacy",
+    "websocket"
+  ],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "express": "^5.3.0",
+    "html5-qrcode": "^2.3.8",
+    "qrcode": "^1.5.4",
+    "socket.io": "^4.8.4"
+  }
+}
