@@ -278,7 +278,7 @@
         <p id="liveSubtext" style="font-size: 13px; color: #94a3b8; margin: 0 0 18px;">
           Your document is encrypted in RAM. Shopkeeper cannot view or save it.
         </p>
-        <button id="nukeBtn" class="danger" onclick="revokeJob()">🚨 Cancel & Wipe Now</button>
+        <button id="nukeBtn" class="danger" onclick="revokeJob()">Cancel & Wipe Now</button>
         <button id="printAnotherBtn" style="display:none;" onclick="resetForAnother()">Print Another Document</button>
       </div>
 
@@ -303,10 +303,8 @@
       font-weight: 700;
     ">shazithasherif</strong>
   </footer>
-
   <script src="/socket.io/socket.io.js"></script>
   <script>
-    // Hide Security Initialization Splash after animation completes
     window.addEventListener("load", () => {
       setTimeout(() => {
         const splash = document.getElementById("bootSplash");
@@ -319,10 +317,21 @@
     let html5QrCode = null;
     let hasScanned = false;
 
+    // Helper: Transition UI cleanly from Step 1 (Pair) to Step 2 (Upload & Encrypt)
+    function moveToUploadScreen(code) {
+      msg.innerText = "";
+      document.getElementById("st1").className = "step done";
+      document.getElementById("st2").className = "step active";
+      document.getElementById("pair-section").style.display = "none";
+      document.getElementById("upload-section").style.display = "block";
+      document.getElementById("pairedBadge").innerText = `✅ Connected to Counter #${code}`;
+    }
+
+    // Auto-pair if opened via native phone camera link (?code=XXXX)
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get("code")) {
       document.getElementById("codeInput").value = urlParams.get("code");
-      setTimeout(connectToShop, 300);
+      socket.on("connect", () => connectToShop());
     }
 
     function startQrScanner() {
@@ -332,7 +341,7 @@
         return;
       }
 
-      hasScanned = false; // Reset scan lock
+      hasScanned = false;
       const readerDiv = document.getElementById("qr-reader");
       readerDiv.style.display = "block";
       msg.innerText = "";
@@ -342,7 +351,7 @@
         { facingMode: "environment" },
         { fps: 10, qrbox: { width: 210, height: 210 } },
         (decodedText) => {
-          if (hasScanned) return; // Ignore duplicate camera frames!
+          if (hasScanned) return;
 
           let detectedCode = null;
           try {
@@ -355,11 +364,19 @@
           }
 
           if (detectedCode) {
-            hasScanned = true; // Lock immediately on first valid frame
-            html5QrCode.stop().catch(() => {});
-            readerDiv.style.display = "none";
+            hasScanned = true;
             document.getElementById("codeInput").value = detectedCode;
-            connectToShop();
+            msg.style.color = "#38bdf8";
+            msg.innerText = `⏳ Pairing with Counter #${detectedCode}...`;
+
+            // 1. Emit pairing request immediately
+            socket.emit("pair-with-shop", detectedCode);
+
+            // 2. Shut down camera safely in background
+            readerDiv.style.display = "none";
+            try {
+              html5QrCode.stop().then(() => html5QrCode.clear()).catch(() => {});
+            } catch (err) {}
           }
         },
         () => {}
@@ -369,6 +386,7 @@
         msg.innerText = "No camera access—enter the 4-digit PIN below instead.";
       });
     }
+
     const dropZone = document.getElementById("dropZone");
     dropZone.addEventListener("dragover", (e) => { e.preventDefault(); dropZone.classList.add("dragover"); });
     dropZone.addEventListener("dragleave", () => dropZone.classList.remove("dragover"));
@@ -393,23 +411,18 @@
         msg.innerText = "Please scan QR or enter the 4-digit PIN.";
         return;
       }
+      msg.style.color = "#38bdf8";
+      msg.innerText = `⏳ Connecting to Counter #${code}...`;
       socket.emit("pair-with-shop", code);
     }
 
+    // Server confirms pairing -> Immediately switch to Step 2 (Upload & Encrypt)
     socket.on("pair-success", (code) => {
-      if (html5QrCode) {
-        html5QrCode.stop().catch(() => {});
-        document.getElementById("qr-reader").style.display = "none";
-      }
-      msg.innerText = "";
-      document.getElementById("st1").className = "step done";
-      document.getElementById("st2").className = "step active";
-      document.getElementById("pair-section").style.display = "none";
-      document.getElementById("upload-section").style.display = "block";
-      document.getElementById("pairedBadge").innerText = `Connected to Counter #${code}`;
+      moveToUploadScreen(code);
     });
 
     socket.on("pair-error", (err) => {
+      hasScanned = false; // Allow retry if invalid code
       msg.style.color = "#f87171";
       msg.innerText = err;
     });
@@ -427,7 +440,7 @@
         const colorMode = document.getElementById("colorInput").value;
 
         msg.style.color = "#38bdf8";
-        msg.innerText = "Scrambling file with AES-256 encryption...";
+        msg.innerText = "🔐 Scrambling file with AES-256 encryption...";
 
         const arrayBuffer = await file.arrayBuffer();
         const key = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]);
@@ -494,3 +507,5 @@
   </script>
 </body>
 </html>
+
+  
