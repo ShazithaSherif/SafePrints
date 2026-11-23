@@ -109,9 +109,10 @@ io.on("connection", (socket) => {
     if (!shop) {
       return socket.emit("pair-error", "Invalid or expired QR/code! Scan the counter screen again.");
     }
-    if (shop.customerSocketId) {
+    if (shop.customerSocketId && shop.customerSocketId !== socket.id) {
       return socket.emit("pair-error", "Another customer is currently connected to this counter.");
     }
+
 
     shop.customerSocketId = socket.id;
     socket.pairedShopCode = code;

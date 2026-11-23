@@ -317,6 +317,7 @@
     const socket = io();
     const msg = document.getElementById("msg");
     let html5QrCode = null;
+    let hasScanned = false;
 
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get("code")) {
@@ -331,6 +332,7 @@
         return;
       }
 
+      hasScanned = false; // Reset scan lock
       const readerDiv = document.getElementById("qr-reader");
       readerDiv.style.display = "block";
       msg.innerText = "";
@@ -340,22 +342,24 @@
         { facingMode: "environment" },
         { fps: 10, qrbox: { width: 210, height: 210 } },
         (decodedText) => {
+          if (hasScanned) return; // Ignore duplicate camera frames!
+
+          let detectedCode = null;
           try {
             const scannedUrl = new URL(decodedText);
-            const code = scannedUrl.searchParams.get("code");
-            if (code) {
-              html5QrCode.stop();
-              readerDiv.style.display = "none";
-              document.getElementById("codeInput").value = code;
-              connectToShop();
-            }
+            detectedCode = scannedUrl.searchParams.get("code");
           } catch (e) {
             if (/^\d{4}$/.test(decodedText.trim())) {
-              html5QrCode.stop();
-              readerDiv.style.display = "none";
-              document.getElementById("codeInput").value = decodedText.trim();
-              connectToShop();
+              detectedCode = decodedText.trim();
             }
+          }
+
+          if (detectedCode) {
+            hasScanned = true; // Lock immediately on first valid frame
+            html5QrCode.stop().catch(() => {});
+            readerDiv.style.display = "none";
+            document.getElementById("codeInput").value = detectedCode;
+            connectToShop();
           }
         },
         () => {}
@@ -365,7 +369,6 @@
         msg.innerText = "No camera access—enter the 4-digit PIN below instead.";
       });
     }
-
     const dropZone = document.getElementById("dropZone");
     dropZone.addEventListener("dragover", (e) => { e.preventDefault(); dropZone.classList.add("dragover"); });
     dropZone.addEventListener("dragleave", () => dropZone.classList.remove("dragover"));
