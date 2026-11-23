@@ -19,7 +19,6 @@
       display: flex; flex-direction: column;
     }
 
-    /* Security Initialization Splash Screen */
     #bootSplash {
       position: fixed; inset: 0; z-index: 10000;
       background: radial-gradient(circle at center, #0f172a 0%, #020617 100%);
@@ -44,7 +43,6 @@
     }
     .boot-sub { font-size: 12px; color: #94a3b8; font-weight: 600; letter-spacing: 0.4px; }
 
-    /* Responsive Top Bar */
     .navbar {
       display: flex; justify-content: space-between; align-items: center;
       padding: 14px clamp(16px, 4vw, 36px);
@@ -67,7 +65,6 @@
     }
     .dot-green { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 8px #22c55e; }
 
-    /* Responsive Workspace */
     .workspace {
       flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: clamp(24px, 4vw, 44px);
       max-width: 1100px; width: 100%; margin: 0 auto;
@@ -122,11 +119,10 @@
 
     .drop-zone {
       border: 2px dashed rgba(56, 189, 248, 0.45); border-radius: 16px;
-      padding: 20px 14px; margin: 14px 0; cursor: pointer; background: #020617;
+      padding: 18px 14px; margin: 14px 0 10px; cursor: pointer; background: #020617;
       transition: all 0.25s ease;
     }
     .drop-zone:hover, .drop-zone.dragover { border-color: #38bdf8; background: rgba(56, 189, 248, 0.08); }
-    .file-name { font-size: 13px; color: #4ade80; font-weight: 600; margin-top: 6px; word-break: break-all; }
 
     .row { display: flex; gap: 10px; margin-bottom: 14px; }
     .field { flex: 1; text-align: left; }
@@ -160,11 +156,21 @@
     #upload-section, #waiting-section { display: none; animation: fadeIn 0.35s ease; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
     #msg { margin-top: 14px; font-size: 13px; font-weight: 600; min-height: 20px; }
+
+    footer {
+      text-align: center; padding: 18px 16px; font-size: 13px; color: #64748b;
+      border-top: 1px solid rgba(148, 163, 184, 0.12);
+      background: rgba(3, 7, 18, 0.85); backdrop-filter: blur(10px);
+      margin-top: auto; letter-spacing: 0.3px;
+    }
+    footer strong {
+      background: linear-gradient(90deg, #38bdf8, #818cf8);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 700;
+    }
   </style>
 </head>
 <body>
 
-  <!-- SECURED INITIALIZATION SPLASH -->
   <div id="bootSplash">
     <div class="boot-badge">
       <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
@@ -192,7 +198,7 @@
       <span class="sec-badge">ZERO-KNOWLEDGE MOBILE PRINT</span>
       <h1>Never Leave Your ID or Resume on a <span>Shop PC Again.</span></h1>
       <p>
-        Your file is scrambled with AES-256 encryption inside your browser before leaving your phone. The shopkeeper cannot preview, save, or recover it.
+        Select one or multiple documents, scramble them with AES-256 encryption inside your browser, and stream directly to the printer without leaving a single copy behind.
       </p>
 
       <div class="visual-box">
@@ -216,7 +222,7 @@
       </div>
 
       <div class="trust-row">
-        <div class="trust-pill">✓ No WhatsApp Sharing</div>
+        <div class="trust-pill">✓ Multi-File Batch Queue</div>
         <div class="trust-pill">✓ Protected Mode Shield</div>
         <div class="trust-pill">✓ 1-Tap Emergency Wipe</div>
       </div>
@@ -233,7 +239,7 @@
         <h2 style="margin: 0 0 6px; font-size: 20px;">Connect to Print Counter</h2>
         <p style="color: #94a3b8; font-size: 13px; margin: 0 0 16px;">Scan the QR code on the shop monitor</p>
 
-        <button onclick="startQrScanner()">Scan the QR</button>
+        <button onclick="startQrScanner()">ScanQR</button>
         <div id="qr-reader"></div>
 
         <div class="divider"><span>OR ENTER 4-DIGIT PIN</span></div>
@@ -248,16 +254,17 @@
         </div>
 
         <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
-          <div style="font-size: 30px;">📄</div>
-          <div style="font-size: 14px; font-weight: 600; margin-top: 4px;">Tap or Drag Private PDF / Image</div>
-          <div style="font-size: 12px; color: #64748b;">AES-256 encrypted locally on your device</div>
-          <div id="selectedFileName" class="file-name"></div>
-          <input type="file" id="fileInput" accept=".pdf,image/png,image/jpeg" multiplestyle="display:none;" onchange="updateFileLabel()" />
+          <div style="font-size: 28px;">📂</div>
+          <div style="font-size: 14px; font-weight: 600; margin-top: 4px;">Tap or Drag Multiple PDFs / Images</div>
+          <div style="font-size: 12px; color: #64748b;">Select multiple files or tap again to add more to batch</div>
+          <input type="file" id="fileInput" accept=".pdf,image/png,image/jpeg" multiple style="display:none;" onchange="addFiles(this.files)" />
         </div>
+
+        <div id="fileListContainer" style="text-align:left; margin-bottom:12px;"></div>
 
         <div class="row">
           <div class="field">
-            <label>Copies</label>
+            <label>Copies (per file)</label>
             <input type="number" id="copiesInput" value="1" min="1" max="50" />
           </div>
           <div class="field">
@@ -269,41 +276,27 @@
           </div>
         </div>
 
-        <button onclick="encryptAndSend()">Click to Print</button>
+        <button id="sendBtn" onclick="encryptAndSend()">🔐 Encrypt & Send Batch to Printer</button>
       </div>
 
       <div id="waiting-section">
         <div id="shieldIcon" class="shield-pulse">🔐</div>
         <p id="liveStatus" style="color: #facc15; font-weight: 700; font-size: 16px; margin: 0 0 8px;">Waiting for Counter Release...</p>
         <p id="liveSubtext" style="font-size: 13px; color: #94a3b8; margin: 0 0 18px;">
-          Your document is encrypted in RAM. Shopkeeper cannot view or save it.
+          Your batch is encrypted in RAM. Shopkeeper cannot view or save it.
         </p>
         <button id="nukeBtn" class="danger" onclick="revokeJob()">Cancel & Wipe Now</button>
-        <button id="printAnotherBtn" style="display:none;" onclick="resetForAnother()">Print Another Document</button>
+        <button id="printAnotherBtn" style="display:none;" onclick="resetForAnother()">Print Another Batch</button>
       </div>
 
       <p id="msg"></p>
     </div>
   </div>
-    <footer style="
-    text-align: center;
-    padding: 18px 16px;
-    font-size: 13px;
-    color: #64748b;
-    border-top: 1px solid rgba(148, 163, 184, 0.12);
-    background: rgba(3, 7, 18, 0.75);
-    backdrop-filter: blur(10px);
-    margin-top: auto;
-    letter-spacing: 0.3px;
-  ">
-    Created by <strong style="
-      background: linear-gradient(90deg, #38bdf8, #818cf8);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      font-weight: 700;
-    ">shazithasherif</strong>
+
+  <footer>
+    Created by <strong>shazithasherif</strong>
   </footer>
-   <script src="/socket.io/socket.io.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
   <script>
     window.addEventListener("load", () => {
       setTimeout(() => {
@@ -316,8 +309,8 @@
     const msg = document.getElementById("msg");
     let html5QrCode = null;
     let hasScanned = false;
+    let selectedFiles = [];
 
-    // Helper: Transition UI cleanly from Step 1 (Pair) to Step 2 (Upload & Encrypt)
     function moveToUploadScreen(code) {
       msg.innerText = "";
       document.getElementById("st1").className = "step done";
@@ -327,7 +320,6 @@
       document.getElementById("pairedBadge").innerText = `✅ Connected to Counter #${code}`;
     }
 
-    // Auto-pair if opened via native phone camera link (?code=XXXX)
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get("code")) {
       document.getElementById("codeInput").value = urlParams.get("code");
@@ -369,10 +361,8 @@
             msg.style.color = "#38bdf8";
             msg.innerText = `⏳ Pairing with Counter #${detectedCode}...`;
 
-            // 1. Emit pairing request immediately
             socket.emit("pair-with-shop", detectedCode);
 
-            // 2. Shut down camera safely in background
             readerDiv.style.display = "none";
             try {
               html5QrCode.stop().then(() => html5QrCode.clear()).catch(() => {});
@@ -387,6 +377,40 @@
       });
     }
 
+    function renderFileList() {
+      const container = document.getElementById("fileListContainer");
+      const sendBtn = document.getElementById("sendBtn");
+      if (!selectedFiles.length) {
+        container.innerHTML = "";
+        sendBtn.innerText = "🔐 Encrypt & Send Batch to Printer";
+        return;
+      }
+      sendBtn.innerText = `🔐 Encrypt & Send (${selectedFiles.length} ${selectedFiles.length > 1 ? "Files" : "File"})`;
+      container.innerHTML = selectedFiles
+        .map(
+          (f, idx) => `
+          <div style="display:flex; justify-content:space-between; align-items:center; background:#020617; border:1px solid rgba(56,189,248,0.3); padding:8px 12px; border-radius:10px; margin-bottom:6px; font-size:12px;">
+            <span style="color:#4ade80; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:85%;">
+              ${idx + 1}. ${f.name}
+            </span>
+            <span onclick="removeFile(${idx})" style="color:#f87171; cursor:pointer; font-weight:bold; padding-left:8px;">✕</span>
+          </div>`
+        )
+        .join("");
+    }
+
+    function addFiles(fileList) {
+      const incoming = Array.from(fileList);
+      selectedFiles = [...selectedFiles, ...incoming];
+      document.getElementById("fileInput").value = "";
+      renderFileList();
+    }
+
+    function removeFile(index) {
+      selectedFiles.splice(index, 1);
+      renderFileList();
+    }
+
     const dropZone = document.getElementById("dropZone");
     dropZone.addEventListener("dragover", (e) => { e.preventDefault(); dropZone.classList.add("dragover"); });
     dropZone.addEventListener("dragleave", () => dropZone.classList.remove("dragover"));
@@ -394,22 +418,9 @@
       e.preventDefault();
       dropZone.classList.remove("dragover");
       if (e.dataTransfer.files.length) {
-        document.getElementById("fileInput").files = e.dataTransfer.files;
-        updateFileLabel();
+        addFiles(e.dataTransfer.files);
       }
     });
-
-    function updateFileLabel() {
-      const files = Array.from(document.getElementById("fileInput").files);
-      if (!files.length) {
-        document.getElementById("selectedFileName").innerText = "";
-        return;
-      }
-      document.getElementById("selectedFileName").innerText =
-        files.length === 1
-          ? `Selected: ${files.name}`
-          : `Selected (${files.length} files): ${files.map((f) => f.name).join(", ")}`;
-    }
 
     function connectToShop() {
       const code = document.getElementById("codeInput").value.trim();
@@ -423,22 +434,20 @@
       socket.emit("pair-with-shop", code);
     }
 
-    // Server confirms pairing -> Immediately switch to Step 2 (Upload & Encrypt)
     socket.on("pair-success", (code) => {
       moveToUploadScreen(code);
     });
 
     socket.on("pair-error", (err) => {
-      hasScanned = false; // Allow retry if invalid code
+      hasScanned = false;
       msg.style.color = "#f87171";
       msg.innerText = err;
     });
 
     async function encryptAndSend() {
-      const files = Array.from(document.getElementById("fileInput").files);
-      if (!files.length) {
+      if (!selectedFiles.length) {
         msg.style.color = "#f87171";
-        msg.innerText = "Please choose at least one PDF or Image first.";
+        msg.innerText = "Please add at least one PDF or Image first.";
         return;
       }
 
@@ -447,13 +456,13 @@
         const colorMode = document.getElementById("colorInput").value;
 
         msg.style.color = "#38bdf8";
-        msg.innerText = `🔐 Scrambling ${files.length} file(s) with AES-256 encryption...`;
+        msg.innerText = `🔐 Scrambling ${selectedFiles.length} file(s) with AES-256 encryption...`;
 
         const key = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]);
         const exportedKey = await crypto.subtle.exportKey("raw", key);
 
         const encryptedFiles = [];
-        for (const file of files) {
+        for (const file of selectedFiles) {
           const arrayBuffer = await file.arrayBuffer();
           const iv = crypto.getRandomValues(new Uint8Array(12));
           const encryptedBuffer = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, arrayBuffer);
@@ -466,7 +475,7 @@
 
         socket.emit("submit-encrypted-job", {
           files: encryptedFiles,
-          fileCount: files.length,
+          fileCount: selectedFiles.length,
           rawKey: Array.from(new Uint8Array(exportedKey)),
           copies,
           colorMode,
@@ -488,6 +497,8 @@
     }
 
     function resetForAnother() {
+      selectedFiles = [];
+      renderFileList();
       document.getElementById("st3").className = "step";
       document.getElementById("st2").className = "step active";
       document.getElementById("waiting-section").style.display = "none";
@@ -503,7 +514,7 @@
       document.getElementById("st3").className = "step done";
       document.getElementById("shieldIcon").innerText = "✅";
       document.getElementById("liveStatus").style.color = "#4ade80";
-      document.getElementById("liveStatus").innerText = "Printed & Permanently Wiped!";
+      document.getElementById("liveStatus").innerText = "Batch Printed & Permanently Wiped!";
       document.getElementById("liveSubtext").innerText = "Zero copies remain on the shop computer or server.";
       document.getElementById("nukeBtn").style.display = "none";
       document.getElementById("printAnotherBtn").style.display = "block";
@@ -512,7 +523,7 @@
     socket.on("job-revoked", () => {
       resetForAnother();
       msg.style.color = "#f87171";
-      msg.innerText = "Document cancelled & wiped from memory.";
+      msg.innerText = "Batch cancelled & wiped from memory.";
     });
 
     socket.on("shop-disconnected", () => {

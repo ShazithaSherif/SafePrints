@@ -7,8 +7,7 @@ const QRCode = require("qrcode");
 
 const app = express();
 const server = http.createServer(app);
-// Allow encrypted multi-file batches up to 25MB in RAM
-const io = new Server(server, { maxHttpBufferSize: 25e6 });
+const io = new Server(server, { maxHttpBufferSize: 30e6 });
 
 const PORT = process.env.PORT || 3000;
 const ADMIN_KEY = process.env.ADMIN_KEY || "safeprint123";
@@ -27,27 +26,23 @@ function saveStats() {
   fs.writeFileSync(STATS_FILE, JSON.stringify(stats, null, 2));
 }
 
-// Serve local html5-qrcode library offline-proof
 app.use(
   "/vendor/html5-qrcode.min.js",
   express.static(path.join(__dirname, "node_modules", "html5-qrcode", "html5-qrcode.min.js"))
 );
 
-// Customer Routes
 app.get(["/", "/print"], (req, res) => {
   stats.totalVisits += 1;
   saveStats();
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-// Counter Terminal Routes
 app.get(["/shop", "/counter"], (req, res) => {
   stats.totalVisits += 1;
   saveStats();
   res.sendFile(path.join(__dirname, "public", "shop.html"));
 });
 
-// Private Analytics Route
 app.get(["/admin", "/stats"], (req, res) => {
   if (req.query.key !== ADMIN_KEY) {
     return res.status(403).send("Access Denied. Invalid Admin Key.");
@@ -88,7 +83,6 @@ io.on("connection", (socket) => {
     }
   });
 
-  // 1. Register Counter Terminal & Generate Local QR Code
   socket.on("register-shop", async () => {
     const code = generateFourDigitCode();
     activeShops[code] = {
@@ -107,7 +101,6 @@ io.on("connection", (socket) => {
     broadcastAdminStats();
   });
 
-  // 2. Pair Customer with Counter (Idempotent for duplicate QR frames)
   socket.on("pair-with-shop", (enteredCode) => {
     const code = String(enteredCode).trim();
     const shop = activeShops[code];
@@ -127,7 +120,6 @@ io.on("connection", (socket) => {
     broadcastAdminStats();
   });
 
-  // 3. Receive Multi-File Encrypted Batch into RAM
   socket.on("submit-encrypted-job", (jobData) => {
     const code = socket.pairedShopCode;
     const shop = activeShops[code];
@@ -153,7 +145,6 @@ io.on("connection", (socket) => {
     socket.emit("job-waiting-approval");
   });
 
-  // 4. Counter Releases Job -> Stream Batch & Wipe Server RAM
   socket.on("approve-print", () => {
     const code = socket.shopCode;
     const shop = activeShops[code];
@@ -166,7 +157,6 @@ io.on("connection", (socket) => {
     socket.emit("execute-silent-print", jobToRelease);
   });
 
-  // 5. Confirm Print & Shred Complete -> Update Telemetry
   socket.on("print-completed-and-wiped", (totalItemsPrinted) => {
     const code = socket.shopCode;
     const shop = activeShops[code];
@@ -181,7 +171,6 @@ io.on("connection", (socket) => {
     }
   });
 
-  // 6. Customer Emergency Revoke
   socket.on("revoke-job", () => {
     const code = socket.pairedShopCode;
     const shop = activeShops[code];
@@ -193,7 +182,6 @@ io.on("connection", (socket) => {
     }
   });
 
-  // 7. Disconnect Cleanup
   socket.on("disconnect", () => {
     if (socket.shopCode && activeShops[socket.shopCode]) {
       const customerId = activeShops[socket.shopCode].customerSocketId;

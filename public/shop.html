@@ -275,7 +275,7 @@
   <footer>
     Created by <strong>shazithasherif</strong>
   </footer>
-  <script src="/socket.io/socket.io.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
   <script>
     window.addEventListener("load", () => {
       setTimeout(() => {
@@ -303,7 +303,7 @@
     });
 
     socket.on("customer-connected", () => {
-      shopStatus.innerText = "✅ Customer Connected • Selecting document(s)...";
+      shopStatus.innerText = "✅ Customer Connected • Building document batch...";
       shopStatus.className = "status-bar connected";
     });
 
@@ -357,7 +357,7 @@
     socket.on("job-revoked", () => {
       protectedOverlay.style.display = "none";
       jobCard.style.display = "none";
-      shopStatus.innerText = "Customer cancelled and wiped the session.";
+      shopStatus.innerText = "🚨 Customer cancelled and wiped the session.";
       shopStatus.className = "status-bar";
     });
 
