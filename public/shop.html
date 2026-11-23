@@ -257,7 +257,7 @@
         </div>
         <div id="jobDetails" class="job-specs"></div>
         <p style="font-size: 12px; color: #94a3b8; margin: 0 0 14px;">Preview disabled. Screen locks in Protected Mode during print.</p>
-        <button class="print-btn" onclick="approvePrint()">🛡️ Release to Printer in Protected Mode</button>
+        <button class="print-btn" onclick="approvePrint()">Print in Protected Mode</button>
       </div>
     </div>
   </div>
@@ -357,7 +357,7 @@
     socket.on("job-revoked", () => {
       protectedOverlay.style.display = "none";
       jobCard.style.display = "none";
-      shopStatus.innerText = "🚨 Customer cancelled and wiped the session.";
+      shopStatus.innerText = "Customer cancelled and wiped the session.";
       shopStatus.className = "status-bar";
     });
 
