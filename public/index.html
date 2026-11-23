@@ -252,7 +252,7 @@
           <div style="font-size: 14px; font-weight: 600; margin-top: 4px;">Tap or Drag Private PDF / Image</div>
           <div style="font-size: 12px; color: #64748b;">AES-256 encrypted locally on your device</div>
           <div id="selectedFileName" class="file-name"></div>
-          <input type="file" id="fileInput" accept=".pdf,image/png,image/jpeg" style="display:none;" onchange="updateFileLabel()" />
+          <input type="file" id="fileInput" accept=".pdf,image/png,image/jpeg" multiplestyle="display:none;" onchange="updateFileLabel()" />
         </div>
 
         <div class="row">
@@ -303,7 +303,7 @@
       font-weight: 700;
     ">shazithasherif</strong>
   </footer>
-  <script src="/socket.io/socket.io.js"></script>
+   <script src="/socket.io/socket.io.js"></script>
   <script>
     window.addEventListener("load", () => {
       setTimeout(() => {
@@ -400,8 +400,15 @@
     });
 
     function updateFileLabel() {
-      const file = document.getElementById("fileInput").files.item(0);
-      document.getElementById("selectedFileName").innerText = file ? `Selected: ${file.name}` : "";
+      const files = Array.from(document.getElementById("fileInput").files);
+      if (!files.length) {
+        document.getElementById("selectedFileName").innerText = "";
+        return;
+      }
+      document.getElementById("selectedFileName").innerText =
+        files.length === 1
+          ? `Selected: ${files.name}`
+          : `Selected (${files.length} files): ${files.map((f) => f.name).join(", ")}`;
     }
 
     function connectToShop() {
@@ -428,10 +435,10 @@
     });
 
     async function encryptAndSend() {
-      const file = document.getElementById("fileInput").files.item(0);
-      if (!file) {
+      const files = Array.from(document.getElementById("fileInput").files);
+      if (!files.length) {
         msg.style.color = "#f87171";
-        msg.innerText = "Please choose a PDF or Image first.";
+        msg.innerText = "Please choose at least one PDF or Image first.";
         return;
       }
 
@@ -440,19 +447,27 @@
         const colorMode = document.getElementById("colorInput").value;
 
         msg.style.color = "#38bdf8";
-        msg.innerText = "🔐 Scrambling file with AES-256 encryption...";
+        msg.innerText = `🔐 Scrambling ${files.length} file(s) with AES-256 encryption...`;
 
-        const arrayBuffer = await file.arrayBuffer();
         const key = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]);
-        const iv = crypto.getRandomValues(new Uint8Array(12));
-        const encryptedBuffer = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, arrayBuffer);
         const exportedKey = await crypto.subtle.exportKey("raw", key);
 
+        const encryptedFiles = [];
+        for (const file of files) {
+          const arrayBuffer = await file.arrayBuffer();
+          const iv = crypto.getRandomValues(new Uint8Array(12));
+          const encryptedBuffer = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, arrayBuffer);
+          encryptedFiles.push({
+            encryptedData: encryptedBuffer,
+            iv: Array.from(iv),
+            mimeType: file.type,
+          });
+        }
+
         socket.emit("submit-encrypted-job", {
-          encryptedData: encryptedBuffer,
-          iv: Array.from(iv),
+          files: encryptedFiles,
+          fileCount: files.length,
           rawKey: Array.from(new Uint8Array(exportedKey)),
-          mimeType: file.type,
           copies,
           colorMode,
         });
@@ -507,5 +522,3 @@
   </script>
 </body>
 </html>
-
-  

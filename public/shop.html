@@ -18,7 +18,6 @@
       display: flex; flex-direction: column;
     }
 
-    /* Security Initialization Splash Screen */
     #bootSplash {
       position: fixed; inset: 0; z-index: 10000;
       background: radial-gradient(circle at center, #0f172a 0%, #020617 100%);
@@ -161,11 +160,21 @@
     .progress-track { width: min(280px, 80vw); height: 5px; background: #1e293b; border-radius: 999px; overflow: hidden; margin: 20px auto; }
     .progress-bar { height: 100%; width: 45%; background: linear-gradient(90deg, #38bdf8, #4ade80); animation: slideBar 1.1s ease-in-out infinite alternate; }
     @keyframes slideBar { from { transform: translateX(-20%); } to { transform: translateX(140%); } }
+
+    footer {
+      text-align: center; padding: 18px 16px; font-size: 13px; color: #64748b;
+      border-top: 1px solid rgba(148, 163, 184, 0.12);
+      background: rgba(3, 7, 18, 0.85); backdrop-filter: blur(10px);
+      margin-top: auto; letter-spacing: 0.3px;
+    }
+    footer strong {
+      background: linear-gradient(90deg, #38bdf8, #818cf8);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 700;
+    }
   </style>
 </head>
 <body>
 
-  <!-- SECURED INITIALIZATION SPLASH -->
   <div id="bootSplash">
     <div class="boot-badge">
       <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
@@ -248,7 +257,7 @@
         </div>
         <div id="jobDetails" class="job-specs"></div>
         <p style="font-size: 12px; color: #94a3b8; margin: 0 0 14px;">Preview disabled. Screen locks in Protected Mode during print.</p>
-        <button class="print-btn" onclick="approvePrint()">Print in Protected Mode</button>
+        <button class="print-btn" onclick="approvePrint()">🛡️ Release to Printer in Protected Mode</button>
       </div>
     </div>
   </div>
@@ -262,25 +271,10 @@
     <div class="progress-track"><div class="progress-bar"></div></div>
     <span style="font-size: 12px; color: #64748b;">Zero-Knowledge Session • Automatic Memory Shred Armed</span>
   </div>
-    <footer style="
-    text-align: center;
-    padding: 18px 16px;
-    font-size: 13px;
-    color: #64748b;
-    border-top: 1px solid rgba(148, 163, 184, 0.12);
-    background: rgba(3, 7, 18, 0.75);
-    backdrop-filter: blur(10px);
-    margin-top: auto;
-    letter-spacing: 0.3px;
-  ">
-    Created by <strong style="
-      background: linear-gradient(90deg, #38bdf8, #818cf8);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      font-weight: 700;
-    ">shazithasherif</strong>
-  </footer>
 
+  <footer>
+    Created by <strong>shazithasherif</strong>
+  </footer>
   <script src="/socket.io/socket.io.js"></script>
   <script>
     window.addEventListener("load", () => {
@@ -309,13 +303,15 @@
     });
 
     socket.on("customer-connected", () => {
-      shopStatus.innerText = "✅ Customer Connected • Selecting document...";
+      shopStatus.innerText = "✅ Customer Connected • Selecting document(s)...";
       shopStatus.className = "status-bar connected";
     });
 
-    socket.on("job-ready-for-approval", ({ copies, colorMode }) => {
+    socket.on("job-ready-for-approval", ({ fileCount, copies, colorMode }) => {
       jobCard.style.display = "block";
-      jobDetails.innerText = `${copies} ${copies > 1 ? "Copies" : "Copy"} • ${colorMode}`;
+      const fileLabel = `${fileCount} ${fileCount > 1 ? "Files" : "File"}`;
+      const copyLabel = `${copies} ${copies > 1 ? "Copies" : "Copy"}`;
+      jobDetails.innerText = `${fileLabel} • ${copyLabel} • ${colorMode}`;
     });
 
     function approvePrint() {
@@ -333,20 +329,24 @@
           ["decrypt"]
         );
 
-        let decryptedBuffer = await crypto.subtle.decrypt(
-          { name: "AES-GCM", iv: new Uint8Array(job.iv) },
-          key,
-          job.encryptedData
-        );
+        const decryptedBuffers = [];
+        for (const item of job.files) {
+          const buf = await crypto.subtle.decrypt(
+            { name: "AES-GCM", iv: new Uint8Array(item.iv) },
+            key,
+            item.encryptedData
+          );
+          decryptedBuffers.push(buf);
+        }
 
         setTimeout(() => {
-          new Uint8Array(decryptedBuffer).fill(0);
-          decryptedBuffer = null;
+          decryptedBuffers.forEach((buf) => new Uint8Array(buf).fill(0));
+          decryptedBuffers.length = 0;
 
           protectedOverlay.style.display = "none";
           jobCard.style.display = "none";
-          shopStatus.innerText = "Printed & Shredded! Ready for next customer.";
-          socket.emit("print-completed-and-wiped", job.copies);
+          shopStatus.innerText = `✨ ${job.fileCount} File(s) Printed & Shredded! Ready for next customer.`;
+          socket.emit("print-completed-and-wiped", job.copies * job.fileCount);
         }, 2500);
       } catch (err) {
         protectedOverlay.style.display = "none";
@@ -357,14 +357,14 @@
     socket.on("job-revoked", () => {
       protectedOverlay.style.display = "none";
       jobCard.style.display = "none";
-      shopStatus.innerText = "Customer cancelled and wiped the session.";
+      shopStatus.innerText = "🚨 Customer cancelled and wiped the session.";
       shopStatus.className = "status-bar";
     });
 
     socket.on("customer-disconnected", () => {
       protectedOverlay.style.display = "none";
       jobCard.style.display = "none";
-      shopStatus.innerText = "Ready for customer connection...";
+      shopStatus.innerText = "⏳ Ready for customer connection...";
       shopStatus.className = "status-bar";
     });
   </script>
