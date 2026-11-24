@@ -30,6 +30,11 @@ app.use(
   "/vendor/html5-qrcode.min.js",
   express.static(path.join(__dirname, "node_modules", "html5-qrcode", "html5-qrcode.min.js"))
 );
+// Silent health check route for UptimeRobot (keeps server awake without counting visits)
+app.get("/health", (req, res) => {
+  res.status(200).send("OK");
+});
+
 
 app.get(["/", "/print"], (req, res) => {
   stats.totalVisits += 1;
