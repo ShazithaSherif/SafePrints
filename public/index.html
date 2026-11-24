@@ -257,7 +257,7 @@
           <div style="font-size: 28px;">📂</div>
           <div style="font-size: 14px; font-weight: 600; margin-top: 4px;">Tap or Drag Multiple PDFs / Images</div>
           <div style="font-size: 12px; color: #64748b;">Select multiple files or tap again to add more to batch</div>
-          <input type="file" id="fileInput" accept=".pdf,image/png,image/jpeg" multiple style="display:none;" onchange="addFiles(this.files)" />
+          <input type="file" id="fileInput" accept="application/pdf,image/*" multiple style="display:none;" onchange="addFiles(this.files)" />
         </div>
 
         <div id="fileListContainer" style="text-align:left; margin-bottom:12px;"></div>
@@ -444,7 +444,7 @@
       msg.innerText = err;
     });
 
-    async function encryptAndSend() {
+        async function encryptAndSend() {
       if (!selectedFiles.length) {
         msg.style.color = "#f87171";
         msg.innerText = "Please add at least one PDF or Image first.";
@@ -469,9 +469,29 @@
           encryptedFiles.push({
             encryptedData: encryptedBuffer,
             iv: Array.from(iv),
-            mimeType: file.type,
+            mimeType: file.type || "application/octet-stream",
           });
         }
+
+        socket.emit("submit-encrypted-job", {
+          files: encryptedFiles,
+          fileCount: selectedFiles.length,
+          rawKey: Array.from(new Uint8Array(exportedKey)),
+          copies,
+          colorMode,
+        });
+
+        msg.innerText = "";
+        document.getElementById("st2").className = "step done";
+        document.getElementById("st3").className = "step active";
+        document.getElementById("upload-section").style.display = "none";
+        document.getElementById("waiting-section").style.display = "block";
+      } catch (err) {
+        msg.style.color = "#f87171";
+        msg.innerText = "Encryption failed: " + err.message;
+      }
+    }
+
 
         socket.emit("submit-encrypted-job", {
           files: encryptedFiles,
