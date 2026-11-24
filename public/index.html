@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SafePrints — Private Mobile Print Portal</title>
-  <script src="/vendor/html5-qrcode.min.js"></script>
+  <script src="/vendor/html5-qrcode.min.js" defer></script>
   <style>
     * { box-sizing: border-box; font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; }
     body {
@@ -300,9 +300,10 @@
   <script>
     window.addEventListener("load", () => {
       setTimeout(() => {
-        const splash = document.getElementById("bootSplash");
-        if (splash) splash.classList.add("hidden");
-      }, 1150);
+  const splash = document.getElementById("bootSplash");
+  if (splash) splash.classList.add("hidden");
+}, 1150);
+
     });
 
     const socket = io();
