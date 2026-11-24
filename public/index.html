@@ -299,10 +299,14 @@
   <script src="/socket.io/socket.io.js"></script>
   <script>
     window.addEventListener("load", () => {
-      setTimeout(() => {
-  const splash = document.getElementById("bootSplash");
-  if (splash) splash.classList.add("hidden");
-}, 1150);
+     // Guaranteed fail-safe: Play "SafePrints Secured" animation for 1.1s, then remove overlay completely
+    setTimeout(() => {
+      const splash = document.getElementById("bootSplash");
+      if (splash) {
+        splash.classList.add("hidden");
+        setTimeout(() => splash.remove(), 500);
+      }
+    }, 1100);
 
     });
 
