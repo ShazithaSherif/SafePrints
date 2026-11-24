@@ -24,6 +24,10 @@
       background: radial-gradient(circle at center, #0f172a 0%, #020617 100%);
       display: flex; flex-direction: column; justify-content: center; align-items: center;
       transition: opacity 0.45s ease, visibility 0.45s ease;
+      animation: autoHideSplash 0.45s ease 1.4s forwards;
+    }
+    @keyframes autoHideSplash {
+      to { opacity: 0; visibility: hidden; pointer-events: none; }
     }
     #bootSplash.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
     .boot-badge {
@@ -141,7 +145,6 @@
     button:hover { transform: translateY(-2px); box-shadow: 0 14px 28px -5px rgba(14, 165, 233, 0.6); }
     button.secondary { background: rgba(30, 41, 59, 0.9); border: 1px solid #334155; box-shadow: none; font-size: 14px; padding: 13px; }
     button.danger { background: linear-gradient(135deg, #ef4444, #b91c1c); box-shadow: 0 10px 20px -5px rgba(239, 68, 68, 0.4); }
-
     .shield-pulse {
       width: 74px; height: 74px; border-radius: 50%; margin: 10px auto 16px;
       background: rgba(56, 189, 248, 0.15); display: flex; align-items: center; justify-content: center;
@@ -298,8 +301,7 @@
   </footer>
   <script src="/socket.io/socket.io.js"></script>
   <script>
-    window.addEventListener("load", () => {
-     // Guaranteed fail-safe: Play "SafePrints Secured" animation for 1.1s, then remove overlay completely
+    // Dismiss bootSplash immediately on timer without waiting for external scripts
     setTimeout(() => {
       const splash = document.getElementById("bootSplash");
       if (splash) {
@@ -308,9 +310,7 @@
       }
     }, 1100);
 
-    });
-
-    const socket = io();
+    const socket = typeof io !== "undefined" ? io() : null;
     const msg = document.getElementById("msg");
     let html5QrCode = null;
     let hasScanned = false;
@@ -326,7 +326,7 @@
     }
 
     const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get("code")) {
+    if (urlParams.get("code") && socket) {
       document.getElementById("codeInput").value = urlParams.get("code");
       socket.on("connect", () => connectToShop());
     }
@@ -366,7 +366,7 @@
             msg.style.color = "#38bdf8";
             msg.innerText = `⏳ Pairing with Counter #${detectedCode}...`;
 
-            socket.emit("pair-with-shop", detectedCode);
+            if (socket) socket.emit("pair-with-shop", detectedCode);
 
             readerDiv.style.display = "none";
             try {
@@ -434,22 +434,29 @@
         msg.innerText = "Please scan QR or enter the 4-digit PIN.";
         return;
       }
+      if (!socket) {
+        msg.style.color = "#f87171";
+        msg.innerText = "Server connection unavailable.";
+        return;
+      }
       msg.style.color = "#38bdf8";
       msg.innerText = `⏳ Connecting to Counter #${code}...`;
       socket.emit("pair-with-shop", code);
     }
 
-    socket.on("pair-success", (code) => {
-      moveToUploadScreen(code);
-    });
+    if (socket) {
+      socket.on("pair-success", (code) => {
+        moveToUploadScreen(code);
+      });
 
-    socket.on("pair-error", (err) => {
-      hasScanned = false;
-      msg.style.color = "#f87171";
-      msg.innerText = err;
-    });
+      socket.on("pair-error", (err) => {
+        hasScanned = false;
+        msg.style.color = "#f87171";
+        msg.innerText = err;
+      });
+    }
 
-        async function encryptAndSend() {
+    async function encryptAndSend() {
       if (!selectedFiles.length) {
         msg.style.color = "#f87171";
         msg.innerText = "Please add at least one PDF or Image first.";
@@ -478,33 +485,15 @@
           });
         }
 
-        socket.emit("submit-encrypted-job", {
-          files: encryptedFiles,
-          fileCount: selectedFiles.length,
-          rawKey: Array.from(new Uint8Array(exportedKey)),
-          copies,
-          colorMode,
-        });
-
-        msg.innerText = "";
-        document.getElementById("st2").className = "step done";
-        document.getElementById("st3").className = "step active";
-        document.getElementById("upload-section").style.display = "none";
-        document.getElementById("waiting-section").style.display = "block";
-      } catch (err) {
-        msg.style.color = "#f87171";
-        msg.innerText = "Encryption failed: " + err.message;
-      }
-    }
-
-
-        socket.emit("submit-encrypted-job", {
-          files: encryptedFiles,
-          fileCount: selectedFiles.length,
-          rawKey: Array.from(new Uint8Array(exportedKey)),
-          copies,
-          colorMode,
-        });
+        if (socket) {
+          socket.emit("submit-encrypted-job", {
+            files: encryptedFiles,
+            fileCount: selectedFiles.length,
+            rawKey: Array.from(new Uint8Array(exportedKey)),
+            copies,
+            colorMode,
+          });
+        }
 
         msg.innerText = "";
         document.getElementById("st2").className = "step done";
@@ -518,9 +507,8 @@
     }
 
     function revokeJob() {
-      socket.emit("revoke-job");
+      if (socket) socket.emit("revoke-job");
     }
-
     function resetForAnother() {
       selectedFiles = [];
       renderFileList();
@@ -535,26 +523,28 @@
       document.getElementById("liveStatus").innerText = "Waiting for Counter Release...";
     }
 
-    socket.on("print-wiped-confirmed", () => {
-      document.getElementById("st3").className = "step done";
-      document.getElementById("shieldIcon").innerText = "✅";
-      document.getElementById("liveStatus").style.color = "#4ade80";
-      document.getElementById("liveStatus").innerText = "Batch Printed & Permanently Wiped!";
-      document.getElementById("liveSubtext").innerText = "Zero copies remain on the shop computer or server.";
-      document.getElementById("nukeBtn").style.display = "none";
-      document.getElementById("printAnotherBtn").style.display = "block";
-    });
+    if (socket) {
+      socket.on("print-wiped-confirmed", () => {
+        document.getElementById("st3").className = "step done";
+        document.getElementById("shieldIcon").innerText = "✅";
+        document.getElementById("liveStatus").style.color = "#4ade80";
+        document.getElementById("liveStatus").innerText = "Batch Printed & Permanently Wiped!";
+        document.getElementById("liveSubtext").innerText = "Zero copies remain on the shop computer or server.";
+        document.getElementById("nukeBtn").style.display = "none";
+        document.getElementById("printAnotherBtn").style.display = "block";
+      });
 
-    socket.on("job-revoked", () => {
-      resetForAnother();
-      msg.style.color = "#f87171";
-      msg.innerText = "Batch cancelled & wiped from memory.";
-    });
+      socket.on("job-revoked", () => {
+        resetForAnother();
+        msg.style.color = "#f87171";
+        msg.innerText = "Batch cancelled & wiped from memory.";
+      });
 
-    socket.on("shop-disconnected", () => {
-      alert("Counter terminal closed.");
-      location.reload();
-    });
+      socket.on("shop-disconnected", () => {
+        alert("Counter terminal closed.");
+        location.reload();
+      });
+    }
   </script>
 </body>
 </html>
